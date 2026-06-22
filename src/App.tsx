@@ -58,6 +58,7 @@ function App() {
     let wave = 1;
     let gameOver = false;
     let waveCleared = false;
+    let paused = false;
     let enemyDirection = 1;
     let enemySpeed = 0.7;
     let enemyDropDistance = 18;
@@ -141,7 +142,11 @@ function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       keys.add(event.code);
 
-      if (event.code === "Space" && !gameOver && !waveCleared) {
+      if (event.code === "KeyP" && !gameOver && !waveCleared) {
+        paused = !paused;
+      }
+
+      if (event.code === "Space" && !gameOver && !waveCleared && !paused) {
         event.preventDefault();
         shoot();
       }
@@ -207,7 +212,7 @@ function App() {
     };
 
     const update = () => {
-      if (gameOver || waveCleared) return;
+      if (gameOver || waveCleared || paused) return;
 
       if (keys.has("ArrowLeft") || keys.has("KeyA")) {
         player.x -= player.speed;
@@ -257,6 +262,24 @@ function App() {
       ctx.fillText(`High Score: ${highScore}`, 24, 92);
       ctx.fillText(`Lives: ${lives}`, 300, 62);
       ctx.fillText(`Wave: ${wave}`, 440, 62);
+
+      if (paused) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "42px monospace";
+        ctx.fillText("PAUSED", CANVAS_WIDTH / 2 - 75, CANVAS_HEIGHT / 2);
+
+        ctx.font = "18px monospace";
+        ctx.fillText(
+          "Press P to resume",
+          CANVAS_WIDTH / 2 - 90,
+          CANVAS_HEIGHT / 2 + 42
+        );
+
+        return;
+      }
 
       ctx.fillStyle = "#33ff99";
       ctx.fillRect(player.x, player.y, player.width, player.height);
@@ -343,6 +366,7 @@ function App() {
         <div className="controls">
           <p>Move: ← → / A D</p>
           <p>Shoot: Space</p>
+          <p>Pause: P</p>
           <p>Next wave / Restart: Enter</p>
         </div>
       </section>
