@@ -17,6 +17,14 @@ type Bullet = {
   speed: number;
 };
 
+type EnemyBullet = {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  speed: number;
+};
+
 type EnemyTier = "grunt" | "scout" | "captain";
 
 type Enemy = {
@@ -55,6 +63,7 @@ function App() {
     };
 
     let bullets: Bullet[] = [];
+    let enemyBullets: EnemyBullet[] = [];
     let enemies: Enemy[] = [];
     let score = 0;
     let highScore = Number(localStorage.getItem(HIGH_SCORE_STORAGE_KEY) ?? "0");
@@ -66,6 +75,8 @@ function App() {
     let enemyDirection = 1;
     let enemySpeed = 0.7;
     let enemyDropDistance = 18;
+    let enemyShotCooldown = 0;
+    let invincibleFrames = 0;
     let animationFrameId = 0;
 
     const updateHighScore = () => {
@@ -114,6 +125,9 @@ function App() {
       enemyDirection = 1;
       enemySpeed = 0.7;
       bullets = [];
+      enemyBullets = [];
+      enemyShotCooldown = 0;
+      invincibleFrames = 0;
       player.x = CANVAS_WIDTH / 2 - player.width / 2;
       createEnemies();
     };
@@ -124,6 +138,9 @@ function App() {
       enemyDirection = 1;
       enemySpeed = Math.min(0.7 + wave * 0.18, 2.8);
       bullets = [];
+      enemyBullets = [];
+      enemyShotCooldown = 0;
+      invincibleFrames = 0;
       player.x = CANVAS_WIDTH / 2 - player.width / 2;
       createEnemies();
     };
@@ -142,7 +159,7 @@ function App() {
       });
     };
 
-    const isColliding = (a: Bullet, b: Enemy) => {
+    const isBulletCollidingWithEnemy = (a: Bullet, b: Enemy) => {
       return (
         a.x < b.x + b.width &&
         a.x + a.width > b.x &&
@@ -179,6 +196,64 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
+    const isEnemyBulletCollidingWithPlayer = (bullet: EnemyBullet) => {
+      return (
+        bullet.x < player.x + player.width &&
+        bullet.x + bullet.width > player.x &&
+        bullet.y < player.y + player.height &&
+        bullet.y + bullet.height > player.y
+      );
+    };
+
+    const damagePlayer = () => {
+      if (invincibleFrames > 0 || gameOver) return;
+
+      lives -= 1;
+      invincibleFrames = 90;
+      enemyBullets = [];
+
+      if (lives <= 0) {
+        gameOver = true;
+        updateHighScore();
+      }
+    };
+
+    const enemyShoot = () => {
+      const livingEnemies = enemies.filter((enemy) => enemy.alive);
+      if (livingEnemies.length === 0) return;
+
+      enemyShotCooldown -= 1;
+      if (enemyShotCooldown > 0) return;
+
+      const shooter =
+        livingEnemies[Math.floor(Math.random() * livingEnemies.length)];
+
+      enemyBullets.push({
+        x: shooter.x + shooter.width / 2 - 3,
+        y: shooter.y + shooter.height,
+        width: 6,
+        height: 14,
+        speed: Math.min(3 + wave * 0.25, 6),
+      });
+
+      enemyShotCooldown = Math.max(25, 85 - wave * 6);
+    };
+
+    const updateEnemyBullets = () => {
+      enemyBullets = enemyBullets
+        .map((bullet) => ({ ...bullet, y: bullet.y + bullet.speed }))
+        .filter((bullet) => bullet.y < CANVAS_HEIGHT);
+
+      for (const bullet of enemyBullets) {
+        if (isEnemyBulletCollidingWithPlayer(bullet)) {
+          bullet.y = CANVAS_HEIGHT + 999;
+          damagePlayer();
+        }
+      }
+
+      enemyBullets = enemyBullets.filter((bullet) => bullet.y < CANVAS_HEIGHT);
+    };
+
     const updateEnemies = () => {
       const livingEnemies = enemies.filter((enemy) => enemy.alive);
       if (livingEnemies.length === 0) return;
@@ -209,14 +284,9 @@ function App() {
       );
 
       if (reachedPlayerZone) {
-        lives -= 1;
-        bullets = [];
+        damagePlayer();
 
-        if (lives <= 0) {
-          gameOver = true;
-          updateHighScore();
-          return;
-        }
+        if (gameOver) return;
 
         enemyDirection = 1;
         createEnemies();
@@ -242,7 +312,7 @@ function App() {
 
       for (const bullet of bullets) {
         for (const enemy of enemies) {
-          if (enemy.alive && isColliding(bullet, enemy)) {
+          if (enemy.alive && isBulletCollidingWithEnemy(bullet, enemy)) {
             enemy.alive = false;
             bullet.y = -999;
             score += enemy.points;
@@ -254,6 +324,12 @@ function App() {
       bullets = bullets.filter((bullet) => bullet.y > -100);
 
       updateEnemies();
+      enemyShoot();
+      updateEnemyBullets();
+
+      if (invincibleFrames > 0) {
+        invincibleFrames -= 1;
+      }
 
       if (enemies.every((enemy) => !enemy.alive)) {
         waveCleared = true;
@@ -293,11 +369,16 @@ function App() {
         return;
       }
 
-      ctx.fillStyle = "#33ff99";
+      ctx.fillStyle = invincibleFrames > 0 ? "#ffff66" : "#33ff99";
       ctx.fillRect(player.x, player.y, player.width, player.height);
 
       ctx.fillStyle = "#00ccff";
       for (const bullet of bullets) {
+        ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
+      }
+
+      ctx.fillStyle = "#ff9933";
+      for (const bullet of enemyBullets) {
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       }
 
