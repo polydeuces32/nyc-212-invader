@@ -1,73 +1,135 @@
-# React + TypeScript + Vite
+# NYC 212 Invader
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A free, browser-playable arcade shooter set in the NYC 212 universe. Built with Vite, React, TypeScript, and HTML Canvas. No wallet required. No Solana in v0.x.
 
-Currently, two official plugins are available:
+## Current Status
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+**v0.4 — Assets, sound, and mobile polish**
 
-## React Compiler
+- Original pixel-style canvas sprites (player ship, enemy drones)
+- Procedural Web Audio SFX (shoot, hit, wave clear, game over)
+- Touch controls for mobile (move, fire, pause, menu)
+- Responsive canvas scaling with retina support
+- Screen shake and particle explosions
+- All v0.3 features retained
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+## Tech Stack
 
-## Expanding the ESLint configuration
+- [Vite](https://vitejs.dev/) 8
+- [React](https://react.dev/) 19
+- [TypeScript](https://www.typescriptlang.org/)
+- HTML Canvas 2D (no game engine)
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+## Features
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+- Player movement and shooting
+- 4×10 enemy grid formation
+- Enemy tiers: Captain (300), Scout (200), Grunt (100)
+- Enemy bullets with wave-scaled fire rate
+- Lives, invincibility frames, game over
+- Wave progression with increasing difficulty
+- Pause / resume
+- Local high score and run history (`localStorage`)
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+- Screen shake and hit/kill particle effects
+- Responsive canvas (scales to screen, retina-aware)
+- Touch controls on mobile / coarse pointer devices
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+## Controls
+
+### Keyboard
+
+| Key | Action |
+|---|---|
+| `←` `→` or `A` `D` | Move |
+| `Space` | Shoot |
+| `P` | Pause / resume |
+| `Enter` | Start / next wave / restart |
+| `H` | High scores |
+| `Esc` | Main menu |
+
+### Touch (mobile)
+
+| Control | Action |
+|---|---|
+| ◀ ▶ | Move |
+| FIRE | Shoot (hold) |
+| PAUSE | Pause / resume |
+| MENU | Return to main menu |
+| START / OK / SCORES | Menu overlays |
+
+## Local Install
+
+```bash
+npm install
+npm run dev
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Open the URL shown in the terminal (typically `http://localhost:5173`).
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Build
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run build
 ```
+
+Output is written to `dist/` (gitignored).
+
+Preview production build:
+
+```bash
+npm run preview
+```
+
+## Deploy (Cloudflare Pages)
+
+See [docs/DEPLOY.md](./docs/DEPLOY.md) for full setup.
+
+**Quick CLI deploy** (after `npx wrangler login`):
+
+```bash
+npm run deploy
+```
+
+**GitHub auto-deploy:** push to `main` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in repo secrets.
+
+Live URL format: `https://nyc-212-invader.pages.dev`
+
+## Roadmap
+
+| Version | Focus |
+|---|---|
+| v0.1 | Prototype ✅ |
+| v0.2 | Lives, pause, local score ✅ |
+| v0.3 | States, enemy bullets ✅ |
+| v0.4 | Assets, sound, mobile ✅ |
+| v0.5 | Cloudflare Pages deployment |
+| v0.6 | Optional Solana devnet |
+| v1.0 | Production browser game |
+
+See [docs/ROADMAP.md](./docs/ROADMAP.md) for detail.
+
+## Documentation
+
+| Doc | Topic |
+|---|---|
+| [ARCHITECTURE.md](./docs/ARCHITECTURE.md) | System design |
+| [GAMEPLAY.md](./docs/GAMEPLAY.md) | Rules and controls |
+| [STATE_MACHINE.md](./docs/STATE_MACHINE.md) | Game states |
+| [ONBOARDING.md](./docs/ONBOARDING.md) | Player and dev onboarding |
+| [TESTING.md](./docs/TESTING.md) | Manual test checklist |
+| [DEPLOY.md](./docs/DEPLOY.md) | Cloudflare Pages deployment |
+
+Full index in `docs/`.
+
+## Wallet / Solana
+
+**Not required for v0.x.** The game is fully playable without installing a wallet or connecting to Solana. Optional blockchain features are planned for v0.6+ as a verified-score enhancement only.
+
+## Intellectual Property
+
+NYC 212 Invader uses **original branding and canvas-drawn pixel art**. Procedural audio is generated in-browser (Web Audio API). It is inspired by classic arcade shooters but does **not** use Space Invaders names, logos, sprites, or sounds. See [docs/IP.md](./docs/IP.md).
+
+## License
+
+See repository license file when published.
