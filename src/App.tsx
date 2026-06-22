@@ -27,6 +27,8 @@ type Enemy = {
 
 const CANVAS_WIDTH = 900;
 const CANVAS_HEIGHT = 600;
+const PLAYER_START_LIVES = 3;
+const HIGH_SCORE_STORAGE_KEY = "nyc212-high-score";
 
 function App() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -51,8 +53,22 @@ function App() {
     let bullets: Bullet[] = [];
     let enemies: Enemy[] = [];
     let score = 0;
+    let highScore = Number(localStorage.getItem(HIGH_SCORE_STORAGE_KEY) ?? "0");
+    let lives = PLAYER_START_LIVES;
+    let wave = 1;
     let gameOver = false;
+    let waveCleared = false;
+    let enemyDirection = 1;
+    let enemySpeed = 0.7;
+    let enemyDropDistance = 18;
     let animationFrameId = 0;
+
+    const updateHighScore = () => {
+      if (score > highScore) {
+        highScore = score;
+        localStorage.setItem(HIGH_SCORE_STORAGE_KEY, String(highScore));
+      }
+    };
 
     const createEnemies = () => {
       enemies = [];
@@ -76,9 +92,34 @@ function App() {
       }
     };
 
+    const resetGame = () => {
+      score = 0;
+      lives = PLAYER_START_LIVES;
+      wave = 1;
+      gameOver = false;
+      waveCleared = false;
+      enemyDirection = 1;
+      enemySpeed = 0.7;
+      bullets = [];
+      player.x = CANVAS_WIDTH / 2 - player.width / 2;
+      createEnemies();
+    };
+
+    const nextWave = () => {
+      wave += 1;
+      waveCleared = false;
+      enemyDirection = 1;
+      enemySpeed = Math.min(0.7 + wave * 0.18, 2.8);
+      bullets = [];
+      player.x = CANVAS_WIDTH / 2 - player.width / 2;
+      createEnemies();
+    };
+
     createEnemies();
 
     const shoot = () => {
+      if (bullets.length >= 4) return;
+
       bullets.push({
         x: player.x + player.width / 2 - 3,
         y: player.y,
@@ -100,17 +141,17 @@ function App() {
     const handleKeyDown = (event: KeyboardEvent) => {
       keys.add(event.code);
 
-      if (event.code === "Space" && !gameOver) {
+      if (event.code === "Space" && !gameOver && !waveCleared) {
         event.preventDefault();
         shoot();
       }
 
+      if (event.code === "Enter" && waveCleared) {
+        nextWave();
+      }
+
       if (event.code === "Enter" && gameOver) {
-        score = 0;
-        gameOver = false;
-        bullets = [];
-        player.x = CANVAS_WIDTH / 2 - 25;
-        createEnemies();
+        resetGame();
       }
     };
 
@@ -121,8 +162,52 @@ function App() {
     window.addEventListener("keydown", handleKeyDown);
     window.addEventListener("keyup", handleKeyUp);
 
+    const updateEnemies = () => {
+      const livingEnemies = enemies.filter((enemy) => enemy.alive);
+      if (livingEnemies.length === 0) return;
+
+      const leftMost = Math.min(...livingEnemies.map((enemy) => enemy.x));
+      const rightMost = Math.max(
+        ...livingEnemies.map((enemy) => enemy.x + enemy.width)
+      );
+
+      const shouldTurn =
+        (enemyDirection === 1 && rightMost >= CANVAS_WIDTH - 20) ||
+        (enemyDirection === -1 && leftMost <= 20);
+
+      if (shouldTurn) {
+        enemyDirection *= -1;
+
+        for (const enemy of livingEnemies) {
+          enemy.y += enemyDropDistance;
+        }
+      } else {
+        for (const enemy of livingEnemies) {
+          enemy.x += enemyDirection * enemySpeed;
+        }
+      }
+
+      const reachedPlayerZone = livingEnemies.some(
+        (enemy) => enemy.y + enemy.height >= player.y
+      );
+
+      if (reachedPlayerZone) {
+        lives -= 1;
+        bullets = [];
+
+        if (lives <= 0) {
+          gameOver = true;
+          updateHighScore();
+          return;
+        }
+
+        enemyDirection = 1;
+        createEnemies();
+      }
+    };
+
     const update = () => {
-      if (gameOver) return;
+      if (gameOver || waveCleared) return;
 
       if (keys.has("ArrowLeft") || keys.has("KeyA")) {
         player.x -= player.speed;
@@ -144,14 +229,18 @@ function App() {
             enemy.alive = false;
             bullet.y = -999;
             score += 100;
+            updateHighScore();
           }
         }
       }
 
       bullets = bullets.filter((bullet) => bullet.y > -100);
 
+      updateEnemies();
+
       if (enemies.every((enemy) => !enemy.alive)) {
-        gameOver = true;
+        waveCleared = true;
+        updateHighScore();
       }
     };
 
@@ -163,8 +252,11 @@ function App() {
 
       ctx.fillStyle = "#ffffff";
       ctx.font = "20px monospace";
-      ctx.fillText(`NYC 212 INVADER`, 24, 32);
+      ctx.fillText("NYC 212 INVADER", 24, 32);
       ctx.fillText(`Score: ${score}`, 24, 62);
+      ctx.fillText(`High Score: ${highScore}`, 24, 92);
+      ctx.fillText(`Lives: ${lives}`, 300, 62);
+      ctx.fillText(`Wave: ${wave}`, 440, 62);
 
       ctx.fillStyle = "#33ff99";
       ctx.fillRect(player.x, player.y, player.width, player.height);
@@ -181,8 +273,8 @@ function App() {
         }
       }
 
-      if (gameOver) {
-        ctx.fillStyle = "rgba(0, 0, 0, 0.7)";
+      if (waveCleared) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.72)";
         ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
         ctx.fillStyle = "#ffffff";
@@ -191,9 +283,35 @@ function App() {
 
         ctx.font = "18px monospace";
         ctx.fillText(
+          "Press ENTER for next wave",
+          CANVAS_WIDTH / 2 - 135,
+          CANVAS_HEIGHT / 2 + 42
+        );
+      }
+
+      if (gameOver) {
+        ctx.fillStyle = "rgba(0, 0, 0, 0.78)";
+        ctx.fillRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
+
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "42px monospace";
+        ctx.fillText("GAME OVER", CANVAS_WIDTH / 2 - 115, CANVAS_HEIGHT / 2);
+
+        ctx.font = "18px monospace";
+        ctx.fillText(
+          `Final Score: ${score}`,
+          CANVAS_WIDTH / 2 - 85,
+          CANVAS_HEIGHT / 2 + 42
+        );
+        ctx.fillText(
+          `High Score: ${highScore}`,
+          CANVAS_WIDTH / 2 - 90,
+          CANVAS_HEIGHT / 2 + 74
+        );
+        ctx.fillText(
           "Press ENTER to restart",
           CANVAS_WIDTH / 2 - 120,
-          CANVAS_HEIGHT / 2 + 42
+          CANVAS_HEIGHT / 2 + 106
         );
       }
     };
@@ -225,7 +343,7 @@ function App() {
         <div className="controls">
           <p>Move: ← → / A D</p>
           <p>Shoot: Space</p>
-          <p>Restart after clear: Enter</p>
+          <p>Next wave / Restart: Enter</p>
         </div>
       </section>
     </main>
