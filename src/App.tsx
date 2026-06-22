@@ -17,12 +17,16 @@ type Bullet = {
   speed: number;
 };
 
+type EnemyTier = "grunt" | "scout" | "captain";
+
 type Enemy = {
   x: number;
   y: number;
   width: number;
   height: number;
   alive: boolean;
+  tier: EnemyTier;
+  points: number;
 };
 
 const CANVAS_WIDTH = 900;
@@ -82,12 +86,20 @@ function App() {
 
       for (let row = 0; row < rows; row++) {
         for (let col = 0; col < cols; col++) {
+          const tier: EnemyTier =
+            row === 0 ? "captain" : row <= 2 ? "scout" : "grunt";
+
+          const points =
+            tier === "captain" ? 300 : tier === "scout" ? 200 : 100;
+
           enemies.push({
             x: startX + col * gapX,
             y: startY + row * gapY,
             width: 38,
             height: 26,
             alive: true,
+            tier,
+            points,
           });
         }
       }
@@ -233,7 +245,7 @@ function App() {
           if (enemy.alive && isColliding(bullet, enemy)) {
             enemy.alive = false;
             bullet.y = -999;
-            score += 100;
+            score += enemy.points;
             updateHighScore();
           }
         }
@@ -289,9 +301,15 @@ function App() {
         ctx.fillRect(bullet.x, bullet.y, bullet.width, bullet.height);
       }
 
-      ctx.fillStyle = "#ff3355";
       for (const enemy of enemies) {
         if (enemy.alive) {
+          ctx.fillStyle =
+            enemy.tier === "captain"
+              ? "#ffcc00"
+              : enemy.tier === "scout"
+                ? "#ff3355"
+                : "#ff66cc";
+
           ctx.fillRect(enemy.x, enemy.y, enemy.width, enemy.height);
         }
       }
