@@ -2,180 +2,273 @@
 
 Static Vite build deployed to **Cloudflare Pages**. No server runtime. No secrets in the frontend bundle.
 
----
-
-## Build Settings (Dashboard)
-
-If connecting GitHub in the Cloudflare dashboard:
-
-| Setting | Value |
-|---|---|
-| Framework preset | None |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Root directory | `/` |
-| Node.js version | `22` (or use `.node-version`) |
-
-Environment variables: **none required** for v0.x.
+**Repository:** https://github.com/polydeuces32/nyc-212-invader
 
 ---
 
-## Option A — GitHub → Cloudflare (Recommended) ✅
+## Deployment model
 
-Use this path. Cloudflare builds and deploys on every push to `main`.
+| Workflow | Trigger | Purpose |
+|---|---|---|
+| **CI** (`.github/workflows/ci.yml`) | Every push/PR to `main` | `npm ci`, lint, build — no deploy |
+| **Deploy Cloudflare Pages** (`.github/workflows/deploy-cloudflare-pages.yml`) | **Manual only** (`workflow_dispatch`) | Build `dist/` and deploy via Wrangler |
 
-### Step 1 — Push repo to GitHub
+CI passing does **not** deploy the game. You must either trigger the deploy workflow manually (after secrets are set) or use Cloudflare Connect Git (alternative below).
 
-If not on GitHub yet:
+---
 
-```bash
-git add .
-git commit -m "Prepare Cloudflare Pages deployment"
-gh repo create nyc-212-invader --public --source=. --push
+## One-time setup: GitHub repository secrets
+
+The deploy workflow **requires** two secrets. Without them, Wrangler fails with:
+
+```text
+In a non-interactive environment, it's necessary to set a CLOUDFLARE_API_TOKEN environment variable
 ```
 
-Or create a repo manually on GitHub, then:
+### 1. Get Cloudflare Account ID
+
+1. Log in to [dash.cloudflare.com](https://dash.cloudflare.com/)
+2. Open **Workers & Pages**
+3. Copy **Account ID** from the right sidebar (under Account Home)
+
+Save this value for `CLOUDFLARE_ACCOUNT_ID`.
+
+### 2. Create Cloudflare API token
+
+1. Cloudflare dashboard → profile icon → **My Profile** → **API Tokens**
+2. **Create Token**
+3. Use template **Edit Cloudflare Workers** (includes Pages deploy permissions), or create a custom token with:
+
+| Permission | Access |
+|---|---|
+| Account → Cloudflare Pages | Edit |
+| Account → Account Settings | Read (optional, for account scoping) |
+
+4. **Account Resources:** include your account
+5. Create token and **copy it once** (you will not see it again)
+
+Save this value for `CLOUDFLARE_API_TOKEN`.
+
+**Minimum scope:** token must be allowed to deploy to Cloudflare Pages for project `nyc-212-invader`. If the project does not exist yet, the first successful deploy creates it.
+
+### 3. Add secrets to GitHub
+
+1. Open https://github.com/polydeuces32/nyc-212-invader/settings/secrets/actions
+2. **New repository secret** for each:
+
+| Name | Value |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Token from step 2 |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID from step 1 |
+
+Names must match **exactly** (case-sensitive).
+
+**Never** commit these values to git, `wrangler.toml`, or `.env`.
+
+---
+
+## Manual deployment (GitHub Actions)
+
+### Trigger from GitHub UI
+
+1. **Actions** tab → **Deploy Cloudflare Pages**
+2. **Run workflow** → branch `main` → **Run workflow**
+3. Open the run → watch **Require Cloudflare secrets**, **build**, **Deploy to Cloudflare Pages**
+
+### Trigger from CLI
 
 ```bash
-git remote add origin https://github.com/YOUR_USER/nyc-212-invader.git
-git push -u origin main
+gh workflow run "Deploy Cloudflare Pages"
+gh run watch
 ```
 
-### Step 2 — Connect Cloudflare Pages
+Or watch a specific run:
 
-1. Go to [dash.cloudflare.com](https://dash.cloudflare.com/) → **Workers & Pages**
-2. **Create** → **Pages** → **Connect to Git**
-3. Authorize GitHub and select **nyc-212-invader**
-4. **Production branch:** `main`
+```bash
+gh run list --workflow="Deploy Cloudflare Pages" --limit 1
+gh run watch <run-id>
+```
 
-### Step 3 — Build settings
+### Expected live URL
 
-| Setting | Value |
-|---|---|
-| Framework preset | None |
-| Build command | `npm run build` |
-| Build output directory | `dist` |
-| Root directory | `/` |
-
-Click **Environment variables** → add (optional but recommended):
-
-| Variable | Value |
-|---|---|
-| `NODE_VERSION` | `22` |
-
-Cloudflare also reads `.node-version` from the repo.
-
-### Step 4 — Deploy
-
-Click **Save and Deploy**. First build takes ~1–2 minutes.
-
-Your live URL:
+After a successful deploy:
 
 ```text
 https://nyc-212-invader.pages.dev
 ```
 
-(Or the project name you chose in Cloudflare.)
-
-### Step 5 — Verify
-
-- Main menu loads
-- Press Enter → game starts
-- Refresh → high score persists
-- Test on phone for touch controls
-
-### After setup
-
-Every `git push` to `main` triggers a new production deploy automatically.
-
-Preview URLs are created for other branches if you enable branch previews in project settings.
-
-**Note:** The GitHub Actions deploy workflow in this repo is manual-only (`workflow_dispatch`) so it does not double-deploy with Cloudflare Git integration.
+Wrangler prints the deployment URL in the workflow log.
 
 ---
 
-## Option B — Manual CLI Deploy
+## Inspect deployment logs
 
-### One-time setup
+### GitHub Actions
+
+1. Repo → **Actions** → select the deploy run
+2. Expand steps:
+   - **Require Cloudflare secrets** — fails fast if secrets missing
+   - **npm run build** — must produce `dist/`
+   - **Verify build output** — checks `dist/index.html`
+   - **Deploy to Cloudflare Pages** — Wrangler upload
+
+### Cloudflare dashboard
+
+1. **Workers & Pages** → project **nyc-212-invader**
+2. **Deployments** — status, preview URL, rollback
+
+---
+
+## Verify deployed site
+
+1. Open `https://nyc-212-invader.pages.dev` (or URL from logs)
+2. Main menu loads (game does not auto-start)
+3. Press **Enter** → gameplay works
+4. Hard refresh → local high score persists
+5. Test on mobile → touch controls visible
+
+Full checklist: [TESTING.md](./TESTING.md)
+
+---
+
+## Build configuration reference
+
+Used by CI, deploy workflow, and local builds:
+
+| Setting | Value |
+|---|---|
+| Node.js | `22` (`.node-version`) |
+| Install | `npm ci` |
+| Build | `npm run build` |
+| Output | `dist/` |
+| Deploy command | `pages deploy dist --project-name=nyc-212-invader` |
+
+### Repo files
+
+| File | Purpose |
+|---|---|
+| `wrangler.toml` | Project name + `pages_build_output_dir = "dist"` |
+| `public/_redirects` | SPA fallback → `index.html` |
+| `public/_headers` | Cache headers for hashed assets |
+| `.node-version` | Node 22 for CI and deploy |
+| `.github/workflows/ci.yml` | Lint + build on push/PR |
+| `.github/workflows/deploy-cloudflare-pages.yml` | Manual Cloudflare deploy |
+
+---
+
+## Alternative: Cloudflare Connect Git (Option A)
+
+Deploy automatically on every push without GitHub Actions secrets:
+
+1. Cloudflare → **Workers & Pages** → **Create** → **Pages** → **Connect to Git**
+2. Select `polydeuces32/nyc-212-invader`, branch `main`
+3. Build command: `npm run build` · Output: `dist` · Node: `22`
+
+If you use Connect Git, keep the GitHub deploy workflow **manual-only** (current setup) to avoid double deploys.
+
+---
+
+## Local CLI deploy (optional)
+
+For ad-hoc deploys from your machine (interactive login, no GitHub secrets):
 
 ```bash
 npm install
 npx wrangler login
-```
-
-### Deploy
-
-```bash
-npm run build
 npm run deploy
 ```
-
-First deploy creates the Pages project if it does not exist.
-
----
-
-## Local Production Preview
-
-```bash
-npm run build
-npm run preview
-```
-
----
-
-## Files
-
-| File | Purpose |
-|---|---|
-| `wrangler.toml` | Pages project name + output dir |
-| `public/_redirects` | SPA fallback to `index.html` |
-| `public/_headers` | Cache headers for hashed assets |
-| `.node-version` | Node 22 for CI and Cloudflare |
-| `.github/workflows/ci.yml` | Build + lint on PR/push |
-| `.github/workflows/deploy-cloudflare-pages.yml` | Deploy on push to `main` |
-
----
-
-## Custom Domain (Optional)
-
-Cloudflare Pages → your project → **Custom domains** → add domain.
-
-Example: `play.yourdomain.com`
-
-No code changes required if the site is served from domain root (`/`).
 
 ---
 
 ## Rollback
 
-Cloudflare Pages → **Deployments** → select a previous deployment → **Rollback to this deployment**.
-
----
-
-## Security
-
-- Do not add API keys or RPC URLs to Cloudflare env vars for v0.x (game is client-only).
-- `CLOUDFLARE_API_TOKEN` lives in GitHub Secrets only — never commit it.
-- Future backend/Solana keys stay server-side, not in this static bundle.
+Cloudflare → **Workers & Pages** → **nyc-212-invader** → **Deployments** → previous deployment → **Rollback to this deployment**.
 
 ---
 
 ## Troubleshooting
 
-| Issue | Fix |
-|---|---|
-| Blank page | Hard refresh; check browser console |
-| Old build cached | Purge cache in Cloudflare or redeploy |
-| Build fails on Cloudflare | Confirm Node 22 and `npm run build` locally |
-| 404 on refresh | Ensure `public/_redirects` is present (copied to `dist/` by Vite) |
+### Missing `CLOUDFLARE_API_TOKEN`
+
+**Symptom:** Wrangler error about non-interactive environment / API token.
+
+**Fix:** Add `CLOUDFLARE_API_TOKEN` under GitHub → Settings → Secrets and variables → Actions. Re-run workflow.
+
+The workflow now fails at **Require Cloudflare secrets** with a clear message before Wrangler runs.
+
+### Missing `CLOUDFLARE_ACCOUNT_ID`
+
+**Symptom:** Wrangler authentication or account errors.
+
+**Fix:** Add `CLOUDFLARE_ACCOUNT_ID` from Cloudflare dashboard sidebar. Re-run workflow.
+
+### Wrong Cloudflare project name
+
+**Symptom:** Deploy succeeds but site URL unexpected, or project not found.
+
+**Fix:** Deploy command must match Cloudflare project:
+
+```text
+pages deploy dist --project-name=nyc-212-invader
+```
+
+Change `wrangler.toml` `name` and workflow `command` together if renaming.
+
+### Wrong build output directory
+
+**Symptom:** Empty site, 404, or “dist/index.html missing” in CI.
+
+**Fix:** Vite outputs to `dist/`. Do not deploy `build/` or `public/`. Run `npm run build` locally and confirm `dist/index.html` exists.
+
+### Workflow never runs on push
+
+**Expected.** Deploy workflow is **manual-only** (`workflow_dispatch`). Pushing to `main` only runs **CI**.
+
+**Fix:** Trigger manually:
+
+```bash
+gh workflow run "Deploy Cloudflare Pages"
+```
+
+### CI passes but site not updated
+
+**Expected.** CI does not deploy.
+
+**Fix:** Run deploy workflow after CI passes.
+
+### Node deprecation warnings in GitHub Actions
+
+**Symptom:** Yellow warnings about Node version in Actions logs.
+
+**Fix:** Warnings alone are not failures. If `npm run build` succeeds, ignore unless GitHub removes the Node version. This repo pins Node 22 via `.node-version`.
+
+### Blank page after deploy
+
+- Hard refresh (`Cmd+Shift+R`)
+- Confirm `dist/_redirects` exists (copied from `public/_redirects`)
+- Check browser console for errors
+
+### Token permissions insufficient
+
+**Symptom:** 403 from Cloudflare API during deploy.
+
+**Fix:** Recreate token with **Cloudflare Pages → Edit** on your account.
 
 ---
 
-## Verify After Deploy
+## Security
 
-1. Main menu loads (no auto-start)
-2. Enter starts game
-3. High score persists after browser refresh
-4. Mobile touch controls work on phone
+- No API keys in the game bundle (client-only v0.x)
+- `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` live in **GitHub Secrets only**
+- Do not commit `.env` (listed in `.gitignore`)
+- Future backend/Solana keys stay server-side, not in this static repo
 
-See [TESTING.md](./TESTING.md) for full checklist.
+---
+
+## Security checklist before deploy
+
+- [ ] Secrets added in GitHub (not in source)
+- [ ] `npm run build` passes locally
+- [ ] CI green on `main`
+- [ ] Deploy workflow triggered manually
+- [ ] Live URL loads main menu

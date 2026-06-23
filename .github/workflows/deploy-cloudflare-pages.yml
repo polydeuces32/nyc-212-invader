@@ -1,10 +1,14 @@
 name: Deploy Cloudflare Pages
 
-# Option A (Cloudflare Connect Git) handles deploys automatically.
-# This workflow is manual-only — use if you prefer CLI-style deploy from GitHub Actions.
+# Manual deploy only. CI (build + lint) runs separately on push/PR.
+# Requires GitHub repository secrets: CLOUDFLARE_API_TOKEN, CLOUDFLARE_ACCOUNT_ID
 
 on:
   workflow_dispatch:
+
+concurrency:
+  group: cloudflare-pages-deploy
+  cancel-in-progress: true
 
 jobs:
   deploy:
@@ -20,8 +24,33 @@ jobs:
           node-version-file: .node-version
           cache: npm
 
+      - name: Require Cloudflare secrets
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_API_TOKEN."
+            echo "Add it under GitHub → Settings → Secrets and variables → Actions."
+            echo "See docs/DEPLOY.md for token creation steps."
+            exit 1
+          fi
+          if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "::error::Missing repository secret CLOUDFLARE_ACCOUNT_ID."
+            echo "Add it under GitHub → Settings → Secrets and variables → Actions."
+            echo "See docs/DEPLOY.md for where to find your Account ID."
+            exit 1
+          fi
+          echo "Cloudflare secrets are configured."
+
       - run: npm ci
       - run: npm run build
+
+      - name: Verify build output
+        run: |
+          test -f dist/index.html || { echo "::error::dist/index.html missing — build failed or wrong output directory"; exit 1; }
+          test -f dist/_redirects || echo "::warning::dist/_redirects missing — SPA fallback may not work"
+          echo "Build output verified ($(du -sh dist | cut -f1))."
 
       - name: Deploy to Cloudflare Pages
         uses: cloudflare/wrangler-action@v3

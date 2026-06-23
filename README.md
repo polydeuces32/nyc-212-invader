@@ -83,17 +83,43 @@ npm run preview
 
 ## Deploy (Cloudflare Pages)
 
-See [docs/DEPLOY.md](./docs/DEPLOY.md) for full setup.
+**CI** runs automatically on every push/PR to `main` (lint + build).  
+**Production deploy** is **manual** — it does not run on push.
 
-**Quick CLI deploy** (after `npx wrangler login`):
+### Prerequisites (one-time)
+
+Add these [GitHub repository secrets](https://github.com/polydeuces32/nyc-212-invader/settings/secrets/actions):
+
+| Secret | Description |
+|---|---|
+| `CLOUDFLARE_API_TOKEN` | Cloudflare API token with **Pages Edit** permission |
+| `CLOUDFLARE_ACCOUNT_ID` | Account ID from Cloudflare → Workers & Pages sidebar |
+
+Setup steps: [docs/DEPLOY.md](./docs/DEPLOY.md)
+
+### Deploy to production
 
 ```bash
+gh workflow run "Deploy Cloudflare Pages"
+gh run watch
+```
+
+Or: GitHub → **Actions** → **Deploy Cloudflare Pages** → **Run workflow**
+
+Live URL (after successful deploy):
+
+```text
+https://nyc-212-invader.pages.dev
+```
+
+### Local CLI deploy (optional)
+
+```bash
+npx wrangler login
 npm run deploy
 ```
 
-**GitHub auto-deploy:** push to `main` with `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in repo secrets.
-
-Live URL format: `https://nyc-212-invader.pages.dev`
+Does not use GitHub secrets — uses interactive Cloudflare login on your machine.
 
 ## Roadmap
 
