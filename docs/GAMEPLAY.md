@@ -23,9 +23,10 @@ Defend against waves of invaders in a grid formation. Destroy enemies for points
 | FIRE | Shoot — hold to repeat |
 | PAUSE | Pause / resume |
 | MENU | Abandon run → main menu |
-| START | Start game (main menu) |
+| START | Start / restart game |
 | OK | Confirm overlay (next wave, restart, return) |
 | SCORES | High scores screen |
+| MENU | Return to main menu (wave cleared, game over, high scores, or in-game) |
 
 ## Player Behavior
 

@@ -17,6 +17,27 @@ Format for recording bugs, decisions, fixes, and lessons. Add new entries at the
 
 ---
 
+## 2026-08-04 — Outstanding navigation and input bugs
+
+**Context:** Sweep of outstanding gameplay bugs after v0.4 polish.
+
+**Issue:**
+
+- High scores opened from `GAME_OVER` always stored `returnState = MAIN_MENU`, violating the state machine and leaving stale score/lives on the menu HUD
+- Touch overlay promised MENU on wave cleared / game over but had no MENU control
+- Holding Space used OS key-repeat with no fire cooldown (unlike touch FIRE)
+- Esc from wave cleared / game over did not clear particles
+
+**Fix / Decision:**
+
+- Added `highScoresReturnState()` / `canReturnToMainMenu()` helpers with Vitest coverage
+- Unified Space + touch fire through `FIRE_COOLDOWN_FRAMES`
+- Overlay MENU on wave cleared, game over, and high scores; `goToMainMenu()` clears particles
+
+**Lesson:** Keep `returnState` tied to the opening screen; give touch the same exits keyboard has.
+
+---
+
 ## 2026-06-22 — v0.3 state machine and enemy bullets
 
 **Context:** Completing browser foundation before Solana.

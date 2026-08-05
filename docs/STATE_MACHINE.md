@@ -37,8 +37,11 @@ stateDiagram-v2
     GAME_OVER --> HIGH_SCORES : H
     GAME_OVER --> MAIN_MENU : Esc
 
+    WAVE_CLEARED --> HIGH_SCORES : SCORES (touch)
     HIGH_SCORES --> MAIN_MENU : Esc/Enter (from menu)
     HIGH_SCORES --> GAME_OVER : Esc/Enter (from game over)
+    HIGH_SCORES --> WAVE_CLEARED : Esc/Enter (from wave cleared)
+    HIGH_SCORES --> MAIN_MENU : MENU (touch, abandons return)
 ```
 
 ## Input Matrix
@@ -54,12 +57,13 @@ stateDiagram-v2
 
 ## `returnState` for High Scores
 
-When opening high scores, the game stores where to return:
+When opening high scores, the game stores where to return via `highScoresReturnState()`:
 
 - From `MAIN_MENU` → return to `MAIN_MENU`
 - From `GAME_OVER` → return to `GAME_OVER`
+- From `WAVE_CLEARED` → return to `WAVE_CLEARED` (touch SCORES)
 
-`Esc` or `Enter` on high scores restores `returnState`.
+`Esc`, `Enter`, or OK on high scores restores `returnState`. Touch MENU from high scores resets the session and returns to `MAIN_MENU`.
 
 ## Implementation Notes
 

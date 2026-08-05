@@ -20,6 +20,12 @@ Expect:
 npm run lint
 ```
 
+### Unit tests
+
+```bash
+npm test
+```
+
 ---
 
 ## Manual Gameplay Checklist
