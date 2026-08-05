@@ -39,6 +39,10 @@ import {
   setupCanvasDisplay,
 } from "./game/render";
 import {
+  canReturnToMainMenu,
+  highScoresReturnState,
+} from "./game/navigation";
+import {
   createSession,
   prepareNextWave,
   resetForNewGame,
@@ -150,16 +154,30 @@ function App() {
         if (next) ctx = next;
       };
 
+      const goToMainMenu = () => {
+        returnToMainMenu(session);
+        particles.length = 0;
+        transitionTo("MAIN_MENU");
+      };
+
       actionsRef.current = {
         start: () => {
           audio.unlock();
           audio.menuConfirm();
           resetForNewGame(session);
+          particles.length = 0;
           transitionTo("PLAYING");
         },
         highScores: () => {
           audio.unlock();
-          returnState = "MAIN_MENU";
+          if (
+            session.state !== "MAIN_MENU" &&
+            session.state !== "GAME_OVER" &&
+            session.state !== "WAVE_CLEARED"
+          ) {
+            return;
+          }
+          returnState = highScoresReturnState(session.state);
           transitionTo("HIGH_SCORES");
         },
         confirm: () => {
@@ -168,14 +186,17 @@ function App() {
           switch (session.state) {
             case "MAIN_MENU":
               resetForNewGame(session);
+              particles.length = 0;
               transitionTo("PLAYING");
               break;
             case "WAVE_CLEARED":
               prepareNextWave(session);
+              particles.length = 0;
               transitionTo("PLAYING");
               break;
             case "GAME_OVER":
               resetForNewGame(session);
+              particles.length = 0;
               transitionTo("PLAYING");
               break;
             case "HIGH_SCORES":
@@ -185,10 +206,8 @@ function App() {
         },
         menu: () => {
           audio.unlock();
-          if (session.state === "PLAYING" || session.state === "PAUSED") {
-            returnToMainMenu(session);
-            particles.length = 0;
-            transitionTo("MAIN_MENU");
+          if (session.state === "HIGH_SCORES" || canReturnToMainMenu(session.state)) {
+            goToMainMenu();
           }
         },
         pause: () => {
@@ -215,45 +234,31 @@ function App() {
 
           case "PLAYING":
             if (event.code === "KeyP") transitionTo("PAUSED");
-            if (event.code === "Escape") {
-              returnToMainMenu(session);
-              particles.length = 0;
-              transitionTo("MAIN_MENU");
-            }
+            if (event.code === "Escape") goToMainMenu();
             if (event.code === "Space") {
               event.preventDefault();
-              tryShoot();
             }
             break;
 
           case "PAUSED":
             if (event.code === "KeyP") transitionTo("PLAYING");
-            if (event.code === "Escape") {
-              returnToMainMenu(session);
-              particles.length = 0;
-              transitionTo("MAIN_MENU");
-            }
+            if (event.code === "Escape") goToMainMenu();
             break;
 
           case "WAVE_CLEARED":
             if (event.code === "Enter") {
               audio.menuConfirm();
               prepareNextWave(session);
+              particles.length = 0;
               transitionTo("PLAYING");
             }
-            if (event.code === "Escape") {
-              returnToMainMenu(session);
-              transitionTo("MAIN_MENU");
-            }
+            if (event.code === "Escape") goToMainMenu();
             break;
 
           case "GAME_OVER":
             if (event.code === "Enter") actionsRef.current.start();
             if (event.code === "KeyH") actionsRef.current.highScores();
-            if (event.code === "Escape") {
-              returnToMainMenu(session);
-              transitionTo("MAIN_MENU");
-            }
+            if (event.code === "Escape") goToMainMenu();
             break;
 
           case "HIGH_SCORES":
@@ -286,11 +291,10 @@ function App() {
         );
 
         if (fireCooldown > 0) fireCooldown -= 1;
-        if (touch.fire && fireCooldown <= 0) {
+        if ((keys.has("Space") || touch.fire) && fireCooldown <= 0) {
           const before = session.playerBullets.length;
-          spawnPlayerBullet(session.player, session.playerBullets);
+          tryShoot();
           if (session.playerBullets.length > before) {
-            audio.shoot();
             fireCooldown = FIRE_COOLDOWN_FRAMES;
           }
         }
@@ -522,6 +526,7 @@ function App() {
         />
         <TouchControls
           touch={touchInput}
+          uiState={uiState}
           mode={
               showGameControls
                 ? "game"

@@ -1,8 +1,9 @@
-import type { TouchInput } from "../game/types";
+import type { GameState, TouchInput } from "../game/types";
 
 type TouchControlsProps = {
   touch: TouchInput;
   mode: "game" | "overlay" | "hidden";
+  uiState: GameState;
   onStart: () => void;
   onScores: () => void;
   onConfirm: () => void;
@@ -17,6 +18,7 @@ function setTouchFlag(touch: TouchInput, key: keyof TouchInput, value: boolean) 
 export function TouchControls({
   touch,
   mode,
+  uiState,
   onStart,
   onScores,
   onConfirm,
@@ -41,6 +43,12 @@ export function TouchControls({
   });
 
   if (mode === "overlay") {
+    const showMenu =
+      uiState === "WAVE_CLEARED" ||
+      uiState === "GAME_OVER" ||
+      uiState === "HIGH_SCORES";
+    const showScores = uiState !== "HIGH_SCORES";
+
     return (
       <div className="touch-controls touch-controls-overlay" aria-label="Touch menu controls">
         <button type="button" className="touch-btn touch-btn-primary" onPointerDown={(e) => { e.preventDefault(); onConfirm(); }}>
@@ -49,9 +57,16 @@ export function TouchControls({
         <button type="button" className="touch-btn" onPointerDown={(e) => { e.preventDefault(); onStart(); }}>
           START
         </button>
-        <button type="button" className="touch-btn" onPointerDown={(e) => { e.preventDefault(); onScores(); }}>
-          SCORES
-        </button>
+        {showScores ? (
+          <button type="button" className="touch-btn" onPointerDown={(e) => { e.preventDefault(); onScores(); }}>
+            SCORES
+          </button>
+        ) : null}
+        {showMenu ? (
+          <button type="button" className="touch-btn touch-btn-menu" onPointerDown={(e) => { e.preventDefault(); onMenu(); }}>
+            MENU
+          </button>
+        ) : null}
       </div>
     );
   }

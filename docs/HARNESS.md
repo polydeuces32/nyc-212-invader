@@ -69,16 +69,17 @@ Ensure:
 
 ---
 
-## Future: Automated Unit Tests
-
-**Target:** Vitest for pure game modules.
+## Automated Unit Tests
 
 ```bash
-# future
 npm test
 ```
 
-Priority test files:
+Current coverage:
+
+- `src/game/navigation.test.ts` — high-score return state and menu exits
+
+Priority follow-ups:
 
 - `src/game/collision.ts` — overlap edge cases
 - `src/game/scoring.ts` — wave formulas
